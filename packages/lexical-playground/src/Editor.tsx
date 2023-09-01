@@ -52,6 +52,7 @@ import FloatingTextFormatToolbarPlugin from './plugins/FloatingTextFormatToolbar
 import ImagesPlugin from './plugins/ImagesPlugin';
 import InlineImagePlugin from './plugins/InlineImagePlugin';
 import KeywordsPlugin from './plugins/KeywordsPlugin';
+import {LayoutPlugin} from './plugins/LayoutPlugin/LayoutPlugin';
 import LinkPlugin from './plugins/LinkPlugin';
 import ListMaxIndentLevelPlugin from './plugins/ListMaxIndentLevelPlugin';
 import MarkdownShortcutPlugin from './plugins/MarkdownShortcutPlugin';
@@ -241,6 +242,7 @@ const skipCollaborationInit =
             <TabIndentationPlugin />
             <CollapsiblePlugin />
             <PageBreakPlugin />
+            <LayoutPlugin />
             {floatingAnchorElem && !isSmallWidthViewport && (
               <>
                 <DraggableBlockPlugin anchorElem={floatingAnchorElem} />

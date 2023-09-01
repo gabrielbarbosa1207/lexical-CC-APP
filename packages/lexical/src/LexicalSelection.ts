@@ -1188,7 +1188,10 @@ export class RangeSelection implements BaseSelection {
             lastNode.replace(textNode);
             lastNode = textNode;
           }
-          lastNode = (lastNode as TextNode).spliceText(0, endOffset, '');
+          // root node selections only select whole nodes, so no text splice is necessary
+          if (!$isRootNode(endPoint.getNode())) {
+            lastNode = (lastNode as TextNode).spliceText(0, endOffset, '');
+          }
           markedNodeKeysForKeep.add(lastNode.__key);
         } else {
           const lastNodeParent = lastNode.getParentOrThrow();
@@ -1655,7 +1658,11 @@ export class RangeSelection implements BaseSelection {
       if ($isElementNode(target) && !target.isInline()) {
         lastNode = node;
         if ($isDecoratorNode(node) && !node.isInline()) {
-          target = target.insertAfter(node, false);
+          if (nodes.length === 1 && target.canBeEmpty() && target.isEmpty()) {
+            target = target.insertBefore(node, false);
+          } else {
+            target = target.insertAfter(node, false);
+          }
         } else if (!$isElementNode(node)) {
           const firstChild = target.getFirstChild();
           if (firstChild !== null) {
