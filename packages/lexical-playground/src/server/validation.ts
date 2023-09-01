@@ -15,7 +15,7 @@ import * as url from 'url';
 import PlaygroundNodes from '../nodes/PlaygroundNodes';
 
 const hostname = 'localhost';
-const port = 1235;
+const port = 80;
 
 let stringifiedEditorStateJSON = '';
 
@@ -104,7 +104,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (method === 'POST' && pathname === '/setEditorState') {
+  if (method === 'POST' && pathname === '/create') {
     const stringifiedJSON = await getJSONData(req);
     const editorState = editor.parseEditorState(stringifiedJSON);
     editor.setEditorState(editorState);

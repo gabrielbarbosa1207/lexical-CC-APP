@@ -72,12 +72,14 @@ import YouTubePlugin from './plugins/YouTubePlugin';
 import PlaygroundEditorTheme from './themes/PlaygroundEditorTheme';
 import ContentEditable from './ui/ContentEditable';
 import Placeholder from './ui/Placeholder';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 
 const skipCollaborationInit =
   // @ts-ignore
   window.parent != null && window.parent.frames.right === window;
+  
+  function Editor(props: any, ref: any): JSX.Element {
 
-export default function Editor(): JSX.Element {
   const {historyState} = useSharedHistoryContext();
   const {
     settings: {
@@ -138,6 +140,19 @@ export default function Editor(): JSX.Element {
     };
   }, [isSmallWidthViewport]);
 
+  // ADDED THIS:
+  const EditorCapturePlugin = React.forwardRef((props: any, ref: any) => {
+    const [editor] = useLexicalComposerContext();
+    useEffect(() => {
+      ref.current = editor;
+      return () => {
+        ref.current = null;
+      };
+    }, [editor, ref]);
+
+    return null;
+  });
+
   return (
     <>
       {isRichText && <ToolbarPlugin />}
@@ -150,6 +165,7 @@ export default function Editor(): JSX.Element {
         <AutoFocusPlugin />
         <ClearEditorPlugin />
         <ComponentPickerPlugin />
+        <EditorCapturePlugin ref={ref} />
         <EmojiPickerPlugin />
         <AutoEmbedPlugin />
 
@@ -261,7 +277,12 @@ export default function Editor(): JSX.Element {
         {shouldUseLexicalContextMenu && <ContextMenuPlugin />}
         <ActionsPlugin isRichText={isRichText} />
       </div>
-      {showTreeView && <TreeViewPlugin />}
+      {/* {showTreeView && <TreeViewPlugin />} */}
     </>
+
+    
   );
 }
+
+
+export default React.forwardRef(Editor);

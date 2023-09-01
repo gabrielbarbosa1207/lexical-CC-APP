@@ -12,7 +12,8 @@ import {resolve} from 'path';
 import path from 'path';
 import fs from 'fs';
 import {replaceCodePlugin} from 'vite-plugin-replace';
-import babel from '@rollup/plugin-babel';
+
+
 
 const moduleResolution = [
   {
@@ -169,6 +170,9 @@ const moduleResolution = [
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  optimizeDeps: {
+    include: ['react-router-dom']
+  },
   plugins: [
     replaceCodePlugin({
       replacements: [
@@ -177,23 +181,6 @@ export default defineConfig({
           to: 'true',
         },
       ],
-    }),
-    babel({
-      babelHelpers: 'bundled',
-      babelrc: false,
-      configFile: false,
-      exclude: '/**/node_modules/**',
-      extensions: ['jsx', 'js', 'ts', 'tsx', 'mjs'],
-      plugins: [
-        '@babel/plugin-transform-flow-strip-types',
-        [
-          require('../../scripts/error-codes/transform-error-messages'),
-          {
-            noMinify: true,
-          },
-        ],
-      ],
-      presets: ['@babel/preset-react'],
     }),
     react(),
   ],

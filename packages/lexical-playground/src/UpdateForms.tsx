@@ -13,11 +13,9 @@ import {$createHeadingNode, $createQuoteNode} from '@lexical/rich-text';
 import {$createParagraphNode, $createTextNode, $getRoot} from 'lexical';
 import * as React from 'react';
 import * as yup from "yup";
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, FormProvider } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import axios from 'axios';
-import { useState } from 'react';
-
 import {isDevPlayground} from './appSettings';
 import {SettingsContext, useSettings} from './context/SettingsContext';
 import {SharedAutocompleteContext} from './context/SharedAutocompleteContext';
@@ -35,9 +33,14 @@ import PlaygroundEditorTheme from './themes/PlaygroundEditorTheme';
 import Authors from './components/Author';
 import FileInput from './components/FileInput';
 import styled from "styled-components";
-import { $generateHtmlFromNodes } from '@lexical/html';
+import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html';
 import Icons from './components/Icon';
 import RateFactorsComponent from './components/Rating';
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { getArticle } from './services/articleBySlug';
+import { ObjectId } from 'mongoose';
+
 
 const palette = {
   primary: '#007BFF',
@@ -109,6 +112,7 @@ const StyledLabel = styled.label`
   font-weight: 500;
   margin-bottom: 0.5rem;
   color: ${palette.black};
+  text-alig:center;
 `;
 
 const EditorContainer = styled.div`
@@ -159,16 +163,6 @@ const Input = styled(StyledInput)<{ error?: boolean, fullwidth?: boolean }>`
     }
 `;
 
-const Textarea = styled.textarea<{ error?: boolean, fullwidth?: boolean }>`
-    width: ${props => props.fullwidth ? '100%' : 'auto'};
-    border: ${props => props.error ? `1px solid red` : `1px solid ${palette.grayLight}`};
-
-    &:focus {
-        border-color: ${props => props.error ? `red` : `${palette.primary}`};
-        outline: none;
-    }
-`;
-
 const ImagePreviewBox = styled.div`
     display: flex;
     flex-direction: column;
@@ -178,7 +172,10 @@ const ImagePreviewBox = styled.div`
     background-color: #f7f7f7;  // A light grey color
     border: 1px solid #e1e1e1;  // A border to define the box
     border-radius: 5px;  // Soften the edges of the box
-    margin: 20px 0;  // Spacing outside the box
+    margin: 20px 0;  // Spacing outside the box;
+    color:gray;
+    font-family: Sans-serif;
+    font-weight:500;
 `;
 
 const StyledImage = styled.img`
@@ -193,11 +190,14 @@ const FileInputLabel = styled.label`
     padding: 10px 20px;
     text-align: center;
     text-decoration: none;
-    display: inline-block;
+    display:block;
+    margin:auto;
     font-size: 16px;
     margin: 4px 2px;
     cursor: pointer;
+
 `;
+
 
 const ContainerComp = styled.div`
     display:flex;
@@ -205,10 +205,8 @@ const ContainerComp = styled.div`
     align-items:center;
     justify-content:space-between;
 `
-const StyledTextarea = styled.textarea`
-    width: 100%;
-    /* ... other styles ... */
-`;
+
+
 
 
 console.warn(
@@ -295,15 +293,117 @@ function prepopulatedRichText() {
   }
 }
 
+interface IAuthor{
+  _id:string;
+  name:string;
+  defaultValue:string;
+}
 
-function App(): JSX.Element {
+interface ITags {
+  bankTag:string;
+  issuerTag:string;
+  benefitTag:string;
+}
+
+
+
+interface IArticle {
+  _id: string;
+  slug:string;
+  title:string;
+  cardImage:string;
+  ctaLink:string;
+  writers:IAuthor;
+  reviewers:IAuthor;
+  checkers:IAuthor;
+  tags:ITags
+  mainFeatures: number;
+  taxes: number;
+  otherFeatures: number;
+  cardBenefits: number;
+  issuerBenefits: number;
+  defaultIconDescriptions: { [iconId: string]: string; };
+  defaultIcons: string[];
+  articleDescription:string;
+  content:string;
+}
+
+
+
+
+function UpdateForms(): JSX.Element {
+
+  const { slug } = useParams<{ slug:string }>();
+  const [article, setArticle ] = useState<IArticle | null>(null);
+
+  const methods = useForm()
+
+
+  useEffect(()=>{
+    fetchArticles()
+  }, [slug]);
+
+
+  async function fetchArticles(){
+    if(slug){
+      const response: IArticle = await getArticle(slug);
+      setArticle(response)
+    }
+  }
+
+  useEffect(() => {
+    if (article?.content && editorRef.current) {
+      const editorInstance = editorRef.current;
+  
+      editorInstance.update(() => {
+        // Parse the content to a DOM instance
+        const parser = new DOMParser();
+        const dom = parser.parseFromString(article.content, "text/html");
+        
+        // Generate LexicalNodes from the DOM
+        const nodes = $generateNodesFromDOM(editorInstance, dom);
+  
+        // Select the root
+        const root = $getRoot();
+  
+        root.clear();
+  
+        // Create a map to store the heading levels
+        const headingLevels = new Map();
+  
+        // Iterate over the nodes and convert them to LexicalNodes
+        nodes.forEach((n) => {
+          if (n.nodeName === "H1") {
+            headingLevels.set(n, 1);
+          } else if (n.nodeName === "H2") {
+            headingLevels.set(n, 2);
+          } else if (n.nodeName === "H3") {
+            headingLevels.set(n, 3);
+          } else {
+            // The node is a paragraph
+            const paragraphNode = $createParagraphNode();
+            paragraphNode.append(n);
+            root.append(paragraphNode);
+          }
+        });
+  
+        // Iterate over the heading levels and create heading nodes
+        for (const [node, level] of headingLevels) {
+          const headingNode = $createHeadingNode(level);
+          headingNode.append(node);
+          root.append(headingNode);
+        }
+      });
+    }
+  }, [article]);
+
 
     // Define your schema
     const schema = yup
     .object({
       slug: yup.string(),
-      cardImage:yup.string(),
       title: yup.string(),
+      cardImage:yup.string(),
       articleDescription: yup.string(),
       content: yup.string(),
       ctaLink: yup.string(),
@@ -328,78 +428,84 @@ function App(): JSX.Element {
 
     const { register, handleSubmit, control, setValue } = useForm({
       resolver: yupResolver(schema),
+      
     });
-  
+
   const editorRef: any = React.useRef();
   // const descriptionEditorRef: any = React.useRef();
   // const faqEditorRef: any = React.useRef()
 
+  
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-
-
+  const [existingImageURL, setExistingImageURL] = useState<string | null>(article?.cardImage || null);
 
   const handleFileChange = (event: any) => {
-    const file = event.target.files[0];
-    if (file) {
-        setSelectedFile(file);
-        setSelectedFileName(file.name);
-
-        // FileReader to read the content of the file
-        const reader = new FileReader();
-
-        reader.onloadend = () => {
-            setImagePreview(reader.result as string);
-        };
-
-        reader.readAsDataURL(file);
-    } else {
-        setSelectedFileName(null);
-        setImagePreview(null);  // reset the image preview
-    }
-};
-
-
-  const onSubmit = async (data: any) => {  
-      // First, upload the card image
-      if (selectedFile) {
-          const formData = new FormData();
-          formData.append('cardImage', selectedFile);
+      const file = event.target.files[0];
+      if (file) {
+          setSelectedFile(file);
+          setSelectedFileName(file.name);
   
-          try {
-              const response = await axios.post('http://localhost:80/create/test', formData);
-              data.cardImage = response.data.cardImage;
-          } catch (error) {
-              console.error("Error uploading the file", error);
-              alert("Image upload failed!");
-              return;  // If image upload fails, don't proceed with the main form submission
-          }
-      }
+          // FileReader to read the content of the file
+          const reader = new FileReader();
   
-      // Handle the editor content
-      editorRef.current.update(() => {
-          // Generate HTML from the editor state.
-          const htmlString = $generateHtmlFromNodes(editorRef.current, null);
-          console.log('HTML content:', htmlString);
-          // Set the content of the data object.
-          data.content = htmlString;
-      });
+          reader.onloadend = () => {
+              setImagePreview(reader.result as string);
+          };
   
-      console.log("Data published: ", data);
-    
-      // Submit the main form data
-      try {
-          const response = await axios.post('http://localhost:80/create/test', data);
-          alert("Article successfully published");
-          console.log(response.data);
-      } catch (error) {
-          console.error(error);
-          alert("The publication failed");
+          reader.readAsDataURL(file);
+      } else {
+          setSelectedFileName(null);
+          setImagePreview(null);  // reset the image preview
       }
   };
   
-    
+  const onSubmit = async (data: any) => {  
+    // First, upload the card image if a new one is selected
+    if (selectedFile) {
+        const formData = new FormData();
+        formData.append('cardImage', selectedFile);
+
+        try {
+            const response = await axios.post('http://localhost:80/upload/images', formData);
+            data.cardImage = response.data.cardImage;
+        } catch (error) {
+            console.error("Error uploading the file", error);
+            alert("Image upload failed!");
+            return;  // If image upload fails, don't proceed with the article update
+        }
+    } else if (existingImageURL) { 
+        data.cardImage = existingImageURL;
+    } else {
+        delete data.cardImage;
+    }
+
+    // Handle the editor content
+    editorRef.current.update(() => {
+        // Generate HTML from the editor state.
+        const htmlString = $generateHtmlFromNodes(editorRef.current, null);
+        console.log('HTML content:', htmlString);
+        // Set the content of the data object.
+        data.content = htmlString;
+    });
+
+    console.log("Data to update: ", data);
+
+
+
+    // Update the article with the provided data
+    try {
+        // Assuming you have the article's ID or slug stored in a variable called articleId
+        const response = await axios.put(`http://localhost:80/articles/update/${article?.slug}`, data);
+        alert("Article successfully updated");
+        console.log(response.data);
+    } catch (error) {
+        console.error(error);
+        alert("Article update failed");
+    }
+};
+
   
   const {
     settings: {isCollab, emptyEditor, measureTypingPerf},
@@ -419,6 +525,16 @@ function App(): JSX.Element {
     theme: PlaygroundEditorTheme,
   };
 
+  if(!article){
+    return(
+      <div>
+        Loading ...
+      </div>
+    )
+  }
+
+  
+  
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
@@ -432,8 +548,18 @@ function App(): JSX.Element {
             </StyledHeader> */}
             <br />
             <br />
+            <FormProvider { ...methods }>
             <StyledForm onSubmit={handleSubmit(onSubmit)}>
             <ImagePreviewBox>
+              <p style={
+                {
+                  textAlign:'center'
+                }
+              }>CARD IMAGE</p>
+              <img src={`http://localhost:80/card-images/${article.cardImage}`}  alt='random text' style={{
+                  width:'100px',
+                  height:'auto',
+                }}/>
               {selectedFileName && <p>File selected: {selectedFileName}</p>}
               {imagePreview && <StyledImage src={imagePreview} alt="Selected Preview" />}
             </ImagePreviewBox>
@@ -444,7 +570,7 @@ function App(): JSX.Element {
                 defaultValue=""
                 render={({ field }) => (
                     <div>
-                        <FileInputLabel htmlFor="cardImage">Choose a file</FileInputLabel>
+                        <FileInputLabel htmlFor="cardImage">Choose a new file</FileInputLabel>
                         <input
                             {...field}
                             type="file"
@@ -459,59 +585,70 @@ function App(): JSX.Element {
                 )}
               />
               </div>
-              <Input {...register("slug")} placeholder="visa-infinity-bradesco" />
-              <Input {...register("title")} placeholder="Bradesco Visa Infinity" />
-              <Input {...register("ctaLink")} placeholder="https://www.bradesco.com.br" />
+              <Input defaultValue={article.slug}
+               {...register("slug")} placeholder="visa-infinity-bradesco" />
+              <Input defaultValue={article.title}
+               {...register("title")} placeholder="Bradesco Visa Infinity" />
+              <Input defaultValue={article.ctaLink}
+               {...register("ctaLink")} placeholder="https://www.bradesco.com.br" />
 
-              <ContainerComp>
+              <ContainerComp>                
                 <StyledLabel>BANCO</StyledLabel>
-                <Input {...register("tags.bankTag")} placeholder="BRADESCO" />
+                <Input defaultValue={article.tags.bankTag } {...register("tags.bankTag")} placeholder="BRADESCO" />
     
                 <StyledLabel>EMISSOR</StyledLabel>
-                <Input {...register("tags.issuerTag")} placeholder="VISA" />
+                <Input  defaultValue={article.tags.issuerTag } {...register("tags.issuerTag")} placeholder="VISA" />
     
                 <StyledLabel>VARIANTE</StyledLabel>
-                <Input {...register("tags.benefitTag")} placeholder="INFINITY" />
-              </ContainerComp>
-              
-              <ContainerComp>                
-                <StyledLabel>AUTOR</StyledLabel>
-                <Authors control={control} fieldName="writers" defaultValue=''/>
-    
-                <StyledLabel>REVISOR</StyledLabel>
-                <Authors control={control} fieldName="reviewers" defaultValue=''/>
-    
-                <StyledLabel>CHECADOR</StyledLabel>
-                <Authors control={control} fieldName="checkers" defaultValue=''/>
-              </ContainerComp>              
-                            
+                <Input  defaultValue={article.tags.benefitTag } {...register("tags.benefitTag")} placeholder="INFINITY" />
+              </ContainerComp>   
 
+              <ContainerComp>
+                  <StyledLabel>AUTOR</StyledLabel>
+                  <Authors control={control} fieldName="writers"  defaultValue={article.writers._id}/>
+
+                  <StyledLabel>REVISOR</StyledLabel>
+                  <Authors control={control} fieldName="reviewers" defaultValue={article.reviewers._id}/>             
+                
+                  <StyledLabel>CHECADOR</StyledLabel>
+                  <Authors control={control} fieldName="checkers" defaultValue={article.checkers._id}/>
+              </ContainerComp>
+
+           
   
-              <RateFactorsComponent register={register} />
+              <RateFactorsComponent 
+              register={register} 
+              defaultValues={{
+                  mainFeatures: article?.mainFeatures,
+                  taxes: article?.taxes,
+                  otherFeatures: article?.otherFeatures,
+                  cardBenefits: article?.cardBenefits,
+                  issuerBenefits: article?.issuerBenefits
+              }} 
+            />
   
               <div>
                 <StyledLabel>Icons:</StyledLabel>
-                <Icons control={control} fieldName="icons" />
+                <Icons control={control} fieldName="icons" defaultIcons={article.defaultIcons} 
+                defaultIconDescriptions={article.defaultIconDescriptions} />
               </div>
+              
+              <h2>
+                 DESCRIÇÃO
+              </h2>
+              <textarea rows={10}  defaultValue={article.articleDescription}></textarea>
   
-              {/* <h2>Description Editor</h2>
-              <EditorContainer>
-                <Editor ref={descriptionEditorRef} />
-              </EditorContainer> */}
-                
-                <div>
-                  <h2>
-                  DESCRIÇÃO
-                  </h2>
-                  <StyledTextarea rows={10} {...register("articleDescription")} placeholder="Article Description" />
-                </div>
-
               <h2>EDITOR</h2>
               <EditorContainer>
                 <Editor ref={editorRef} />
               </EditorContainer>
+              {/*   
+              <h2>Article Editor</h2>
+              <EditorContainer>
+                <Editor ref={editorRef} />
+              </EditorContainer>
   
-              {/* <h2>FAQ Editor</h2>
+              <h2>FAQ Editor</h2>
               <EditorContainer>
                 <Editor ref={faqEditorRef} />
               </EditorContainer> */}
@@ -520,11 +657,12 @@ function App(): JSX.Element {
                 <button type="submit">Save</button>
               </ButtonDiv>
             </StyledForm>
+            </FormProvider>
             
-            <Settings />
-            {isDevPlayground ? <DocsPlugin /> : null}
+            {/* <Settings /> */}
+            {/* {isDevPlayground ? <DocsPlugin /> : null}
             {isDevPlayground ? <PasteLogPlugin /> : null}
-            {isDevPlayground ? <TestRecorderPlugin /> : null}
+            {isDevPlayground ? <TestRecorderPlugin /> : null} */}
   
             {measureTypingPerf ? <TypingPerfPlugin /> : null}
           </SharedAutocompleteContext>
@@ -538,7 +676,7 @@ function App(): JSX.Element {
 export default function PlaygroundApp(): JSX.Element {
   return (
     <SettingsContext>
-      <App />
+      <UpdateForms />
       <a
         href="https://github.com/facebook/lexical/tree/main/packages/lexical-playground"
         className="github-corner"

@@ -6,6 +6,8 @@
     "jsx": "react-jsx",
     "moduleResolution": "node",
     "downlevelIteration": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "noEmit": true,
     "strict": true,
     "baseUrl": ".",

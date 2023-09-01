@@ -38,6 +38,8 @@ import styled from "styled-components";
 import { $generateHtmlFromNodes } from '@lexical/html';
 import Icons from './components/Icon';
 import RateFactorsComponent from './components/Rating';
+import CategoryType from './components/Category';
+import Cards from './components/Cards';
 
 const palette = {
   primary: '#007BFF',
@@ -302,23 +304,11 @@ function App(): JSX.Element {
     const schema = yup
     .object({
       slug: yup.string(),
-      cardImage:yup.string(),
       title: yup.string(),
       articleDescription: yup.string(),
       content: yup.string(),
       ctaLink: yup.string(),
-      tags: yup.object({
-        bankTag: yup.string(),
-        issuerTag: yup.string(),
-        benefitTag: yup.string(),
-        // Add any other tag fields here
-    }),
       createdAt: yup.date().notRequired(),     
-      mainFeatures:yup.number(),
-      cardBenefits:yup.number(),
-      taxes:yup.number(),
-      otherFeatures:yup.number(),
-      issuesBenefits:yup.number(),
       writers:yup.string(),
       reviewers:yup.string(),
       checkers:yup.string()
@@ -330,76 +320,34 @@ function App(): JSX.Element {
       resolver: yupResolver(schema),
     });
   
-  const editorRef: any = React.useRef();
-  // const descriptionEditorRef: any = React.useRef();
-  // const faqEditorRef: any = React.useRef()
+  const editorRef: any = React.useRef()
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-
-
-
-  const handleFileChange = (event: any) => {
-    const file = event.target.files[0];
-    if (file) {
-        setSelectedFile(file);
-        setSelectedFileName(file.name);
-
-        // FileReader to read the content of the file
-        const reader = new FileReader();
-
-        reader.onloadend = () => {
-            setImagePreview(reader.result as string);
-        };
-
-        reader.readAsDataURL(file);
-    } else {
-        setSelectedFileName(null);
-        setImagePreview(null);  // reset the image preview
-    }
-};
-
-
-  const onSubmit = async (data: any) => {  
-      // First, upload the card image
-      if (selectedFile) {
-          const formData = new FormData();
-          formData.append('cardImage', selectedFile);
+  const onSubmit = async (data: any) => {
   
-          try {
-              const response = await axios.post('http://localhost:80/create/test', formData);
-              data.cardImage = response.data.cardImage;
-          } catch (error) {
-              console.error("Error uploading the file", error);
-              alert("Image upload failed!");
-              return;  // If image upload fails, don't proceed with the main form submission
-          }
-      }
-  
-      // Handle the editor content
-      editorRef.current.update(() => {
-          // Generate HTML from the editor state.
-          const htmlString = $generateHtmlFromNodes(editorRef.current, null);
-          console.log('HTML content:', htmlString);
-          // Set the content of the data object.
-          data.content = htmlString;
-      });
-  
-      console.log("Data published: ", data);
+  // Handle the editor content
+  editorRef.current.update(() => {
+    // Generate HTML from the editor state.
+    const htmlString = $generateHtmlFromNodes(editorRef.current, null);
+    console.log('HTML content:', htmlString);
+    // Set the content of the data object.
+    data.content = htmlString;
+  });
+
+  console.log("Data published: ", data);
     
-      // Submit the main form data
-      try {
-          const response = await axios.post('http://localhost:80/create/test', data);
-          alert("Article successfully published");
-          console.log(response.data);
-      } catch (error) {
-          console.error(error);
-          alert("The publication failed");
-      }
+  // Submit the main form datas
+  try {
+    const response = await axios.post('http://localhost:80/cartoes-de-credito', data)
+    alert("Category successfully published");
+    console.log(response.data);
+    } catch (error) {
+      console.error(error);
+      alert("The category publication failed");
+    }
   };
   
-    
+  
+
   
   const {
     settings: {isCollab, emptyEditor, measureTypingPerf},
@@ -425,96 +373,40 @@ function App(): JSX.Element {
       <SharedHistoryContext>
         <TableContext>
           <SharedAutocompleteContext>
-            {/* <StyledHeader>
-              <a href="https://lexical.dev" target="_blank" rel="noreferrer">
-                <img src={logo} alt="Lexical Logo" />
-              </a>
-            </StyledHeader> */}
-            <br />
-            <br />
             <StyledForm onSubmit={handleSubmit(onSubmit)}>
-            <ImagePreviewBox>
-              {selectedFileName && <p>File selected: {selectedFileName}</p>}
-              {imagePreview && <StyledImage src={imagePreview} alt="Selected Preview" />}
-            </ImagePreviewBox>
-              <div>
-              <Controller
-                name="cardImage"
-                control={control}
-                defaultValue=""
-                render={({ field }) => (
-                    <div>
-                        <FileInputLabel htmlFor="cardImage">Choose a file</FileInputLabel>
-                        <input
-                            {...field}
-                            type="file"
-                            id="cardImage"
-                            style={{ display: 'none' }}
-                            onChange={(e) => {
-                                handleFileChange(e);
-                                field.onChange(e);  // Ensure React Hook Form's Controller gets the change event
-                            }}
-                        />
-                    </div>
-                )}
-              />
-              </div>
+
               <Input {...register("slug")} placeholder="visa-infinity-bradesco" />
               <Input {...register("title")} placeholder="Bradesco Visa Infinity" />
-              <Input {...register("ctaLink")} placeholder="https://www.bradesco.com.br" />
-
-              <ContainerComp>
-                <StyledLabel>BANCO</StyledLabel>
-                <Input {...register("tags.bankTag")} placeholder="BRADESCO" />
-    
-                <StyledLabel>EMISSOR</StyledLabel>
-                <Input {...register("tags.issuerTag")} placeholder="VISA" />
-    
-                <StyledLabel>VARIANTE</StyledLabel>
-                <Input {...register("tags.benefitTag")} placeholder="INFINITY" />
-              </ContainerComp>
               
               <ContainerComp>                
                 <StyledLabel>AUTOR</StyledLabel>
                 <Authors control={control} fieldName="writers" defaultValue=''/>
-    
+
                 <StyledLabel>REVISOR</StyledLabel>
                 <Authors control={control} fieldName="reviewers" defaultValue=''/>
-    
+
                 <StyledLabel>CHECADOR</StyledLabel>
                 <Authors control={control} fieldName="checkers" defaultValue=''/>
               </ContainerComp>              
                             
 
   
-              <RateFactorsComponent register={register} />
-  
-              <div>
-                <StyledLabel>Icons:</StyledLabel>
-                <Icons control={control} fieldName="icons" />
-              </div>
-  
-              {/* <h2>Description Editor</h2>
-              <EditorContainer>
-                <Editor ref={descriptionEditorRef} />
-              </EditorContainer> */}
+              <CategoryType control={control} fieldName="categoryName" defaultValue=''/>
+
+              <Cards control={control} fieldName='cards' defaultValue='' />
                 
-                <div>
-                  <h2>
-                  DESCRIÇÃO
-                  </h2>
-                  <StyledTextarea rows={10} {...register("articleDescription")} placeholder="Article Description" />
-                </div>
+              <div>
+                <h2>
+                DESCRIÇÃO
+                </h2>
+                <StyledTextarea rows={10} {...register("articleDescription")} placeholder="Article Description" />
+              </div>
 
               <h2>EDITOR</h2>
               <EditorContainer>
                 <Editor ref={editorRef} />
               </EditorContainer>
   
-              {/* <h2>FAQ Editor</h2>
-              <EditorContainer>
-                <Editor ref={faqEditorRef} />
-              </EditorContainer> */}
   
               <ButtonDiv>
                 <button type="submit">Save</button>

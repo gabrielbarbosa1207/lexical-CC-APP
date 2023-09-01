@@ -13,6 +13,10 @@ import * as React from 'react';
 import {createRoot} from 'react-dom/client';
 
 import App from './App';
+import UpdateForms from './UpdateForms'
+import Category from "./Category"
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
 
 // Handle runtime errors
 const showErrorOverlay = (err: Event) => {
@@ -32,8 +36,16 @@ window.addEventListener('unhandledrejection', ({reason}) =>
   showErrorOverlay(reason),
 );
 
+
+
 createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter>
+      <Routes>
+        <Route path='/create' element={ <App /> } />
+        <Route path='/update/:slug' element={ < UpdateForms /> } />
+        <Route path='/category' element={ < Category /> } />
+      </Routes>
+    </BrowserRouter>
   </React.StrictMode>,
 );
