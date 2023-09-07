@@ -38,12 +38,5 @@
     "yjs": ">=13.5.42"
   },
   "devDependencies": {
-    "@babel/plugin-transform-flow-strip-types": "^7.22.5",
-    "@babel/preset-react": "^7.22.5",
-    "@types/lodash-es": "^4.14.182",
-    "@vitejs/plugin-react": "^1.0.7",
-    "husky": "^8.0.3",
-    "vite": "^2.8.0",
-    "vite-plugin-replace": "0.1.1"
   }
 }
